@@ -21,7 +21,7 @@ DB_PATH = Path("trading_app.db")
 
 class Database:
     def __init__(self):
-        self.conn = sqlite3.connect(str(DB_PATH))
+        self.conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.init_db()
     
@@ -29,7 +29,7 @@ class Database:
         # Users table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -39,7 +39,7 @@ class Database:
         # Items table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS items (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 item_id TEXT UNIQUE NOT NULL,
                 game TEXT NOT NULL,
@@ -78,7 +78,7 @@ class Database:
         # Stickers table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS stickers (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_id TEXT NOT NULL,
                 sticker_name TEXT,
                 sticker_image TEXT,
@@ -95,7 +95,7 @@ class Database:
         # Charms table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS charms (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_id TEXT NOT NULL,
                 charm_name TEXT,
                 charm_image TEXT,
@@ -108,7 +108,7 @@ class Database:
         # Finds table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS finds (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 game TEXT,
                 item_name TEXT,
@@ -127,7 +127,7 @@ class Database:
         # Sets table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS sets (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 name TEXT,
                 description TEXT,
@@ -141,7 +141,7 @@ class Database:
         # Set items
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS set_items (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 set_id INTEGER,
                 item_id TEXT,
                 FOREIGN KEY (set_id) REFERENCES sets(id),
@@ -152,7 +152,7 @@ class Database:
         # Crafts table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS crafts (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 name TEXT,
                 pattern TEXT,
@@ -168,7 +168,7 @@ class Database:
         # Settings table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS settings (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 theme TEXT DEFAULT 'light',
                 currency TEXT DEFAULT 'USD',
@@ -184,16 +184,30 @@ class Database:
             self.cursor.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)',
                               (username, password_hash))
             self.conn.commit()
+            print(f"✓ User '{username}' registered successfully")
             return True
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            print(f"✗ Registration error: {e}")
             return False
     
     def authenticate_user(self, username, password):
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        self.cursor.execute('SELECT id FROM users WHERE username = ? AND password_hash = ?',
-                          (username, password_hash))
+        print(f"Looking for user: {username}")
+        print(f"Password hash: {password_hash}")
+        
+        self.cursor.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
         result = self.cursor.fetchone()
-        return result[0] if result else None
+        
+        if result:
+            user_id, stored_hash = result
+            print(f"Found user. Stored hash: {stored_hash}")
+            print(f"Match: {stored_hash == password_hash}")
+            if stored_hash == password_hash:
+                return user_id
+        else:
+            print(f"User '{username}' not found in database")
+        
+        return None
     
     def close(self):
         self.conn.close()
@@ -208,66 +222,151 @@ class AuthWindow(QWidget):
     
     def init_ui(self):
         self.setWindowTitle("MyTrading - Authentication")
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 400, 350)
         self.setStyleSheet(self.get_light_theme())
         
         layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
         
         title = QLabel("MyTrading")
         title_font = QFont()
-        title_font.setPointSize(24)
+        title_font.setPointSize(28)
         title_font.setBold(True)
         title.setFont(title_font)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
         
+        subtitle = QLabel("Skin Trading Manager")
+        subtitle_font = QFont()
+        subtitle_font.setPointSize(11)
+        subtitle.setFont(subtitle_font)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("color: #666666;")
+        layout.addWidget(subtitle)
+        
+        layout.addSpacing(20)
+        
         layout.addWidget(QLabel("Username:"))
         self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Enter your username")
+        self.username_input.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                border: 1px solid #cccccc;
+                border-radius: 5px;
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #007AFF;
+            }
+        """)
         layout.addWidget(self.username_input)
         
         layout.addWidget(QLabel("Password:"))
         self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter your password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                border: 1px solid #cccccc;
+                border-radius: 5px;
+                font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #007AFF;
+            }
+        """)
         layout.addWidget(self.password_input)
+        
+        # Allow Enter key to trigger login
+        self.password_input.returnPressed.connect(self.login)
+        
+        layout.addSpacing(10)
         
         button_layout = QHBoxLayout()
         
         login_btn = QPushButton("Login")
+        login_btn.setMinimumHeight(40)
+        login_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007AFF;
+                color: white;
+                border-radius: 5px;
+                padding: 10px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #0051D5;
+            }
+            QPushButton:pressed {
+                background-color: #003A99;
+            }
+        """)
         login_btn.clicked.connect(self.login)
         button_layout.addWidget(login_btn)
         
         register_btn = QPushButton("Register")
+        register_btn.setMinimumHeight(40)
+        register_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #34C759;
+                color: white;
+                border-radius: 5px;
+                padding: 10px;
+                font-weight: bold;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background-color: #30B050;
+            }
+            QPushButton:pressed {
+                background-color: #248A3D;
+            }
+        """)
         register_btn.clicked.connect(self.register)
         button_layout.addWidget(register_btn)
         
         layout.addLayout(button_layout)
+        layout.addStretch()
         
         self.setLayout(layout)
     
     def login(self):
-        username = self.username_input.text()
-        password = self.password_input.text()
-        
-        user_id = self.db.authenticate_user(username, password)
-        if user_id:
-            self.authenticated.emit(user_id)
-        else:
-            QMessageBox.warning(self, "Error", "Invalid credentials")
-    
-    def register(self):
-        username = self.username_input.text()
+        username = self.username_input.text().strip()
         password = self.password_input.text()
         
         if not username or not password:
-            QMessageBox.warning(self, "Error", "Fill in all fields")
+            QMessageBox.warning(self, "Error", "Please fill in all fields")
+            return
+        
+        user_id = self.db.authenticate_user(username, password)
+        if user_id:
+            QMessageBox.information(self, "Success", f"Welcome back, {username}!")
+            self.authenticated.emit(user_id)
+        else:
+            QMessageBox.warning(self, "Error", "Invalid username or password")
+    
+    def register(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        
+        if not username or not password:
+            QMessageBox.warning(self, "Error", "Please fill in all fields")
+            return
+        
+        if len(password) < 4:
+            QMessageBox.warning(self, "Error", "Password must be at least 4 characters")
             return
         
         if self.db.register_user(username, password):
-            QMessageBox.information(self, "Success", "Account created successfully")
+            QMessageBox.information(self, "Success", f"Account '{username}' created!\n\nNow you can login with your credentials.")
             self.username_input.clear()
             self.password_input.clear()
         else:
-            QMessageBox.warning(self, "Error", "Username already exists")
+            QMessageBox.warning(self, "Error", "Username already exists. Please choose another one.")
     
     def get_light_theme(self):
         return """
@@ -526,10 +625,14 @@ class MainApp(QMainWindow):
         layout.addWidget(QLabel("<b>Theme</b>"))
         theme_layout = QHBoxLayout()
         
-        for theme in ["Light", "Dark", "Black", "Purple-Black"]:
+        self.theme_group = QButtonGroup()
+        for i, theme in enumerate(["Light", "Dark", "Black", "Purple-Black"]):
             radio = QRadioButton(theme)
+            if i == 0:
+                radio.setChecked(True)
             radio.toggled.connect(lambda checked, t=theme: self.change_theme(t) if checked else None)
             theme_layout.addWidget(radio)
+            self.theme_group.addButton(radio, i)
         
         layout.addLayout(theme_layout)
         
