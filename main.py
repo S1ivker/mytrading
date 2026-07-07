@@ -26,7 +26,6 @@ class Database:
         self.init_db()
     
     def init_db(self):
-        # Users table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +35,6 @@ class Database:
             )
         ''')
         
-        # Items table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,7 +73,6 @@ class Database:
             )
         ''')
         
-        # Stickers table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS stickers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +89,6 @@ class Database:
             )
         ''')
         
-        # Charms table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS charms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,7 +101,6 @@ class Database:
             )
         ''')
         
-        # Finds table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS finds (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,7 +119,6 @@ class Database:
             )
         ''')
         
-        # Sets table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS sets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,7 +132,6 @@ class Database:
             )
         ''')
         
-        # Set items
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS set_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,7 +142,6 @@ class Database:
             )
         ''')
         
-        # Crafts table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS crafts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -165,7 +157,6 @@ class Database:
             )
         ''')
         
-        # Settings table
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS settings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,197 +175,19 @@ class Database:
             self.cursor.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)',
                               (username, password_hash))
             self.conn.commit()
-            print(f"✓ User '{username}' registered successfully")
             return True
-        except sqlite3.IntegrityError as e:
-            print(f"✗ Registration error: {e}")
+        except sqlite3.IntegrityError:
             return False
     
     def authenticate_user(self, username, password):
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        print(f"Looking for user: {username}")
-        print(f"Password hash: {password_hash}")
-        
-        self.cursor.execute('SELECT id, password_hash FROM users WHERE username = ?', (username,))
+        self.cursor.execute('SELECT id FROM users WHERE username = ? AND password_hash = ?',
+                          (username, password_hash))
         result = self.cursor.fetchone()
-        
-        if result:
-            user_id, stored_hash = result
-            print(f"Found user. Stored hash: {stored_hash}")
-            print(f"Match: {stored_hash == password_hash}")
-            if stored_hash == password_hash:
-                return user_id
-        else:
-            print(f"User '{username}' not found in database")
-        
-        return None
+        return result[0] if result else None
     
     def close(self):
         self.conn.close()
-
-class AuthWindow(QWidget):
-    authenticated = pyqtSignal(int)
-    
-    def __init__(self, db):
-        super().__init__()
-        self.db = db
-        self.init_ui()
-    
-    def init_ui(self):
-        self.setWindowTitle("MyTrading - Authentication")
-        self.setGeometry(100, 100, 400, 350)
-        self.setStyleSheet(self.get_light_theme())
-        
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(30, 30, 30, 30)
-        
-        title = QLabel("MyTrading")
-        title_font = QFont()
-        title_font.setPointSize(28)
-        title_font.setBold(True)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
-        
-        subtitle = QLabel("Skin Trading Manager")
-        subtitle_font = QFont()
-        subtitle_font.setPointSize(11)
-        subtitle.setFont(subtitle_font)
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setStyleSheet("color: #666666;")
-        layout.addWidget(subtitle)
-        
-        layout.addSpacing(20)
-        
-        layout.addWidget(QLabel("Username:"))
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter your username")
-        self.username_input.setStyleSheet("""
-            QLineEdit {
-                padding: 10px;
-                border: 1px solid #cccccc;
-                border-radius: 5px;
-                font-size: 12px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #007AFF;
-            }
-        """)
-        layout.addWidget(self.username_input)
-        
-        layout.addWidget(QLabel("Password:"))
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Enter your password")
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setStyleSheet("""
-            QLineEdit {
-                padding: 10px;
-                border: 1px solid #cccccc;
-                border-radius: 5px;
-                font-size: 12px;
-            }
-            QLineEdit:focus {
-                border: 2px solid #007AFF;
-            }
-        """)
-        layout.addWidget(self.password_input)
-        
-        # Allow Enter key to trigger login
-        self.password_input.returnPressed.connect(self.login)
-        
-        layout.addSpacing(10)
-        
-        button_layout = QHBoxLayout()
-        
-        login_btn = QPushButton("Login")
-        login_btn.setMinimumHeight(40)
-        login_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #007AFF;
-                color: white;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #0051D5;
-            }
-            QPushButton:pressed {
-                background-color: #003A99;
-            }
-        """)
-        login_btn.clicked.connect(self.login)
-        button_layout.addWidget(login_btn)
-        
-        register_btn = QPushButton("Register")
-        register_btn.setMinimumHeight(40)
-        register_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #34C759;
-                color: white;
-                border-radius: 5px;
-                padding: 10px;
-                font-weight: bold;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background-color: #30B050;
-            }
-            QPushButton:pressed {
-                background-color: #248A3D;
-            }
-        """)
-        register_btn.clicked.connect(self.register)
-        button_layout.addWidget(register_btn)
-        
-        layout.addLayout(button_layout)
-        layout.addStretch()
-        
-        self.setLayout(layout)
-    
-    def login(self):
-        username = self.username_input.text().strip()
-        password = self.password_input.text()
-        
-        if not username or not password:
-            QMessageBox.warning(self, "Error", "Please fill in all fields")
-            return
-        
-        user_id = self.db.authenticate_user(username, password)
-        if user_id:
-            QMessageBox.information(self, "Success", f"Welcome back, {username}!")
-            self.authenticated.emit(user_id)
-        else:
-            QMessageBox.warning(self, "Error", "Invalid username or password")
-    
-    def register(self):
-        username = self.username_input.text().strip()
-        password = self.password_input.text()
-        
-        if not username or not password:
-            QMessageBox.warning(self, "Error", "Please fill in all fields")
-            return
-        
-        if len(password) < 4:
-            QMessageBox.warning(self, "Error", "Password must be at least 4 characters")
-            return
-        
-        if self.db.register_user(username, password):
-            QMessageBox.information(self, "Success", f"Account '{username}' created!\n\nNow you can login with your credentials.")
-            self.username_input.clear()
-            self.password_input.clear()
-        else:
-            QMessageBox.warning(self, "Error", "Username already exists. Please choose another one.")
-    
-    def get_light_theme(self):
-        return """
-            QWidget { background-color: #ffffff; color: #000000; }
-            QLineEdit { border: 1px solid #cccccc; border-radius: 5px; padding: 5px; }
-            QPushButton { background-color: #007AFF; color: white; border-radius: 5px; padding: 8px; font-weight: bold; }
-            QPushButton:hover { background-color: #0051D5; }
-        """
 
 class MainApp(QMainWindow):
     def __init__(self, user_id, db):
@@ -431,7 +244,7 @@ class MainApp(QMainWindow):
         frame = QFrame()
         frame.setStyleSheet("""
             QFrame { background-color: #f5f5f5; border-right: 1px solid #e0e0e0; }
-            QPushButton { text-align: left; padding: 12px; border: none; background-color: transparent; }
+            QPushButton { text-align: left; padding: 12px; border: none; background-color: transparent; font-size: 13px; }
             QPushButton:hover { background-color: #e0e0e0; }
         """)
         layout = QVBoxLayout()
@@ -515,19 +328,10 @@ class MainApp(QMainWindow):
         layout = QVBoxLayout()
         
         add_btn = QPushButton("+ Add Find")
-        add_btn.clicked.connect(self.open_add_find_dialog)
         layout.addWidget(add_btn)
         
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_widget = QWidget()
-        scroll_layout = QGridLayout()
-        scroll_layout.setSpacing(15)
-        scroll_layout.setContentsMargins(10, 10, 10, 10)
-        scroll_layout.addStretch()
-        scroll_widget.setLayout(scroll_layout)
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(QLabel("Finds section - Coming soon"))
+        layout.addStretch()
         
         widget.setLayout(layout)
         return widget
@@ -539,15 +343,8 @@ class MainApp(QMainWindow):
         add_btn = QPushButton("+ Add Set")
         layout.addWidget(add_btn)
         
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_widget = QWidget()
-        scroll_layout = QGridLayout()
-        scroll_layout.setSpacing(15)
-        scroll_layout.addStretch()
-        scroll_widget.setLayout(scroll_layout)
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(QLabel("Sets section - Coming soon"))
+        layout.addStretch()
         
         widget.setLayout(layout)
         return widget
@@ -557,16 +354,8 @@ class MainApp(QMainWindow):
         layout = QVBoxLayout()
         
         layout.addWidget(QLabel("<b>Beautiful Trades</b>"))
-        
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_widget = QWidget()
-        scroll_layout = QGridLayout()
-        scroll_layout.setSpacing(15)
-        scroll_layout.addStretch()
-        scroll_widget.setLayout(scroll_layout)
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(QLabel("Beautiful Trades section - Coming soon"))
+        layout.addStretch()
         
         widget.setLayout(layout)
         return widget
@@ -578,15 +367,8 @@ class MainApp(QMainWindow):
         add_btn = QPushButton("+ Add Craft")
         layout.addWidget(add_btn)
         
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_widget = QWidget()
-        scroll_layout = QGridLayout()
-        scroll_layout.setSpacing(15)
-        scroll_layout.addStretch()
-        scroll_widget.setLayout(scroll_layout)
-        scroll.setWidget(scroll_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(QLabel("Crafts section - Coming soon"))
+        layout.addStretch()
         
         widget.setLayout(layout)
         return widget
@@ -625,14 +407,12 @@ class MainApp(QMainWindow):
         layout.addWidget(QLabel("<b>Theme</b>"))
         theme_layout = QHBoxLayout()
         
-        self.theme_group = QButtonGroup()
         for i, theme in enumerate(["Light", "Dark", "Black", "Purple-Black"]):
             radio = QRadioButton(theme)
             if i == 0:
                 radio.setChecked(True)
             radio.toggled.connect(lambda checked, t=theme: self.change_theme(t) if checked else None)
             theme_layout.addWidget(radio)
-            self.theme_group.addButton(radio, i)
         
         layout.addLayout(theme_layout)
         
@@ -651,11 +431,8 @@ class MainApp(QMainWindow):
         layout = QVBoxLayout()
         
         layout.addWidget(QLabel("<b>Item Comparison</b>"))
-        
-        self.comparison_table = QTableWidget()
-        self.comparison_table.setColumnCount(5)
-        self.comparison_table.setHorizontalHeaderLabels(["Item", "Buy Price", "Expected Sell", "Profit %", "Recommendation"])
-        layout.addWidget(self.comparison_table)
+        layout.addWidget(QLabel("Comparison section - Coming soon"))
+        layout.addStretch()
         
         widget.setLayout(layout)
         return widget
@@ -684,82 +461,12 @@ class MainApp(QMainWindow):
         float_input.setDecimals(5)
         layout.addRow("Float Value:", float_input)
         
-        wear_label = QLabel("-")
-        layout.addRow("Wear State:", wear_label)
-        
         pattern_input = QSpinBox()
         pattern_input.setRange(0, 1000)
         layout.addRow("Pattern:", pattern_input)
         
         stattrak_check = QCheckBox()
         layout.addRow("StatTrak:", stattrak_check)
-        
-        souvenir_check = QCheckBox()
-        layout.addRow("Souvenir:", souvenir_check)
-        
-        buy_date = QDateEdit()
-        buy_date.setDate(QDate.currentDate())
-        layout.addRow("Buy Date:", buy_date)
-        
-        buy_currency = QComboBox()
-        buy_currency.addItems(self.currencies)
-        layout.addRow("Buy Currency:", buy_currency)
-        
-        buy_price = QDoubleSpinBox()
-        buy_price.setRange(0, 100000)
-        layout.addRow("Buy Price:", buy_price)
-        
-        buy_fee = QDoubleSpinBox()
-        layout.addRow("Buy Fee:", buy_fee)
-        
-        buy_fee_type = QComboBox()
-        buy_fee_type.addItems(["+", "-"])
-        layout.addRow("Fee Type:", buy_fee_type)
-        
-        marketplace = QComboBox()
-        marketplace.addItems(self.marketplaces)
-        layout.addRow("Marketplace:", marketplace)
-        
-        button_layout = QHBoxLayout()
-        save_btn = QPushButton("Save")
-        cancel_btn = QPushButton("Cancel")
-        button_layout.addWidget(save_btn)
-        button_layout.addWidget(cancel_btn)
-        layout.addRow(button_layout)
-        
-        cancel_btn.clicked.connect(dialog.reject)
-        save_btn.clicked.connect(dialog.accept)
-        
-        dialog.setLayout(layout)
-        dialog.exec()
-    
-    def open_add_find_dialog(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Add New Find")
-        dialog.setGeometry(100, 100, 500, 400)
-        dialog.setStyleSheet(self.get_theme_stylesheet())
-        
-        layout = QFormLayout()
-        
-        game_combo = QComboBox()
-        game_combo.addItems(self.games)
-        layout.addRow("Game:", game_combo)
-        
-        name_input = QLineEdit()
-        layout.addRow("Item Name:", name_input)
-        
-        current_price = QDoubleSpinBox()
-        layout.addRow("Current Price:", current_price)
-        
-        market_price = QDoubleSpinBox()
-        layout.addRow("Market Price:", market_price)
-        
-        marketplace = QComboBox()
-        marketplace.addItems(self.marketplaces)
-        layout.addRow("Marketplace:", marketplace)
-        
-        url_input = QLineEdit()
-        layout.addRow("URL:", url_input)
         
         button_layout = QHBoxLayout()
         save_btn = QPushButton("Save")
@@ -788,7 +495,7 @@ class MainApp(QMainWindow):
                 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox { border: 1px solid #cccccc; border-radius: 5px; padding: 5px; }
                 QPushButton { background-color: #007AFF; color: white; border-radius: 5px; padding: 8px; font-weight: bold; }
                 QPushButton:hover { background-color: #0051D5; }
-                QTableWidget { border: 1px solid #e0e0e0; border-radius: 5px; }
+                QTableWidget { border: 1px solid #e0e0e0; }
                 QHeaderView::section { background-color: #f5f5f5; padding: 5px; }
             """
         elif self.current_theme == "dark":
@@ -812,23 +519,127 @@ class MainApp(QMainWindow):
             """
     
     def logout(self):
-        self.close()
+        reply = QMessageBox.question(self, "Logout", "Are you sure?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.close()
+
+class AuthWindow(QWidget):
+    def __init__(self, db, app):
+        super().__init__()
+        self.db = db
+        self.app = app
+        self.init_ui()
+    
+    def init_ui(self):
+        self.setWindowTitle("MyTrading - Authentication")
+        self.setGeometry(100, 100, 400, 350)
+        self.setStyleSheet(self.get_light_theme())
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        title = QLabel("MyTrading")
+        title_font = QFont()
+        title_font.setPointSize(28)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+        
+        subtitle = QLabel("Skin Trading Manager")
+        subtitle_font = QFont()
+        subtitle_font.setPointSize(11)
+        subtitle.setFont(subtitle_font)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle.setStyleSheet("color: #666666;")
+        layout.addWidget(subtitle)
+        
+        layout.addSpacing(20)
+        
+        layout.addWidget(QLabel("Username:"))
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Enter your username")
+        layout.addWidget(self.username_input)
+        
+        layout.addWidget(QLabel("Password:"))
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter your password")
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.password_input)
+        
+        self.password_input.returnPressed.connect(self.login)
+        
+        layout.addSpacing(10)
+        
+        button_layout = QHBoxLayout()
+        
+        login_btn = QPushButton("Login")
+        login_btn.setMinimumHeight(40)
+        login_btn.clicked.connect(self.login)
+        button_layout.addWidget(login_btn)
+        
+        register_btn = QPushButton("Register")
+        register_btn.setMinimumHeight(40)
+        register_btn.clicked.connect(self.register)
+        button_layout.addWidget(register_btn)
+        
+        layout.addLayout(button_layout)
+        layout.addStretch()
+        
+        self.setLayout(layout)
+    
+    def login(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        
+        if not username or not password:
+            QMessageBox.warning(self, "Error", "Fill in all fields")
+            return
+        
+        user_id = self.db.authenticate_user(username, password)
+        if user_id:
+            self.app.open_main_app(user_id)
+            self.close()
+        else:
+            QMessageBox.warning(self, "Error", "Invalid credentials")
+    
+    def register(self):
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        
+        if not username or not password:
+            QMessageBox.warning(self, "Error", "Fill in all fields")
+            return
+        
+        if len(password) < 4:
+            QMessageBox.warning(self, "Error", "Password min 4 chars")
+            return
+        
+        if self.db.register_user(username, password):
+            QMessageBox.information(self, "Success", "Account created! Now login.")
+            self.username_input.clear()
+            self.password_input.clear()
+        else:
+            QMessageBox.warning(self, "Error", "Username exists!")
+    
+    def get_light_theme(self):
+        return """
+            QWidget { background-color: #ffffff; color: #000000; }
+            QLineEdit { border: 1px solid #cccccc; border-radius: 5px; padding: 8px; }
+            QPushButton { background-color: #007AFF; color: white; border-radius: 5px; padding: 8px; font-weight: bold; }
+            QPushButton:hover { background-color: #0051D5; }
+        """
 
 class App(QApplication):
     def __init__(self):
         super().__init__(sys.argv)
         self.db = Database()
-        self.auth_window = None
+        self.auth_window = AuthWindow(self.db, self)
         self.main_window = None
-        self.show_auth()
-    
-    def show_auth(self):
-        self.auth_window = AuthWindow(self.db)
-        self.auth_window.authenticated.connect(self.on_authenticated)
         self.auth_window.show()
     
-    def on_authenticated(self, user_id):
-        self.auth_window.close()
+    def open_main_app(self, user_id):
         self.main_window = MainApp(user_id, self.db)
         self.main_window.show()
 
